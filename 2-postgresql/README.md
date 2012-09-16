@@ -89,6 +89,110 @@ Looking forward to "... two-dimensional geographic searches in MongoDB"
 "Beyond the core power of SQL, contrib packages are what makes PostgreSQL shine."
 - Cool learned lots the DB2 package concept is new to me and really blurs the line on what belongs in code or in the db.
 
+## Day 1 Homework
+### Find
+1. Bookmark the online PostgreSQL FAQ and documents.
+
+``http://www.postgresql.org/docs/``
+``http://www.postgresql.org/docs/faq/``
+
+2. Acquaint yourself with the command-line \? and \h output.
+
+3. In the addresses FOREIGN KEY, find in the docs what MATCH FULL means.
+
+``http://www.postgresql.org/docs/8.1/static/sql-createtable.html``
+
+MATCH FULL will not allow one column of a multicolumn foreign key to be null unless all foreign key columns are null. 
+
+### Do
+
+1. Select all the tables we created (and only those) from pg_class.
+
+```
+SELECT *
+FROM (((events e LEFT JOIN venues v ON e.venue_id = v.venue_id)
+LEFT JOIN cities ci ON v.postal_code = ci.postal_code and v.country_code = ci.country_code)
+LEFT JOIN countries co ON ci.country_code = co.country_code);
+```
+
+2. Write a query that finds the country name of the LARP Club event.
+
+```
+SELECT co.country_name
+FROM (((events e LEFT JOIN venues v ON e.venue_id = v.venue_id)
+LEFT JOIN cities ci ON v.postal_code = ci.postal_code and v.country_code = ci.country_code)
+LEFT JOIN countries co ON ci.country_code = co.country_code)
+WHERE e.title = 'LARP Club';
+```
+Do we have to join the cities table? Why not just create a foreign key to countries?  Pros/Cons
+
+3. Alter the venues table to contain a boolean column called active, with the default value of TRUE.
+
+```
+ALTER TABLE venues ADD COLUMN active boolean DEFAULT TRUE;
+```
+
+## Day 2 Homework
+### Find
+1. Find the list of aggregate functions in the PostgreSQL docs.
+
+``http://www.postgresql.org/docs/8.2/static/functions-aggregate.html``
+
+2. Find a GUI program to interact with PostgreSQL, such as Navicat.
+
+``http://www.navicat.com/en/products/navicat_pgsql/pgsql_detail_mac.html``
+
+### Do 					 							
+1. Create a rule that captures DELETEs on venues and instead sets the active flag (created in the Day 1 homework) to FALSE.
+```
+CREATE RULE delete_venues AS ON DELETE TO venues DO INSTEAD
+UPDATE venues SET active = FALSE
+WHERE venue_id = old.venue_id;
+```
+
+2. A temporary table was not the best way to implement our event calendar pivot table. The generate_series(a, b) function returns a set of records, from a to b. Replace the month_count table SELECT with this. 
+
+```		 	 	 		
+SELECT * FROM crosstab
+  ('SELECT extract(year from starts) as year, extract(month from starts) as month, count(*)
+    FROM events
+    GROUP BY year, month', 'SELECT * FROM generate_series(1,12)')
+  AS (year int, jan int, feb int, mar int, apr int, may int,
+      jun int, jul int, aug int, sep int, oct int, nov int,
+      dec int)
+  ORDER BY YEAR;
+```
+
+3. Build a pivot table that displays every day in a single month, where each week of the month is a row and each day name forms a column across the top (seven days, starting with Sunday and ending with Saturday) like a standard month calendar. Each day should contain a count of the number of events for that date or should remain blank if no event occurs. 
+
+```
+SELECT * FROM crosstab
+  ('SELECT extract(week from starts) as week, extract(dow from starts) as day, count(*)
+    FROM events
+    WHERE starts >= ''2012-02-01'' AND starts <= ''2012-02-28''
+    GROUP BY week, day', 'SELECT * FROM generate_series(0,6)')
+  AS (Week int, Sun int, Mon int, Tue int, Wed int, Thu int,
+      Fri int, Sat int)
+  ORDER BY week;
+```
+
+## DAY 3 Notes
+
+Levenshtein is a string comparison algorithm that compares how similar two strings are by how many steps are required to change one string into another.
+This is so interesting - I've wondered how to go about fuzzy string matches for search or suggestions.
+
+**Question:** metaphone(name,8) <= What is the second argument (8) for?
+
+  metaphone(text source, int max_output_length) returns text max_output_length
+  The Second Arg sets the maximum length of the output metaphone code; if longer, the output is truncated to this length.
+
+Cubes are freaking awesome!  Love it.  Not sure how I missed this lecture at Uni. Perhaps it's time to go back :)
+Being able to expand or reduce the cube makes so much sense, love seeing this side of tackling bigger data problems using SQL.
+Looking forward to "... two-dimensional geographic searches in MongoDB"
+
+"Beyond the core power of SQL, contrib packages are what makes PostgreSQL shine."
+- Cool learned lots the DB2 package concept is new to me and really blurs the line on what belongs in code or in the db.
+
 ## Day 3 Homework
 ### Find
 #### 1. Find online documentation of all contributed packages bundled into Postgres.
@@ -106,6 +210,20 @@ movie_genuius(text) is the main stored proc
 - Calls fuzzy_suggest() to retrieve close match movies and actors
 - Selects closest match and retrieves top 5 titles using movie_by_actor() or movie_by_genre()
 
+**movie_genuius Example Output:**
+```
+select * from movie_genuius('Star Wars');
+NOTICE:  Returning similar movies by Genre for Star Wars
+                  top_5_titles                  
+------------------------------------------------
+ Star Wars: Episode V - The Empire Strikes Back
+ Avatar
+ Explorers
+ Krull
+ E.T. The Extra-Terrestrial
+```
+
+**movie_genuius Code:**
 ```
 CREATE OR REPLACE FUNCTION movie_genuius(search_text text)
 RETURNS TABLE (top_5_titles text) AS $$
@@ -145,6 +263,17 @@ $$ LANGUAGE plpgsql;
 fuzzy_suggest(text) Uses simple levenshtein algorithm only to measure distance from actor and movie matches
 - Returns a list of unordered matches and their similarity distance to the provided search term
 
+**fuzzy_suggest Example Output:**
+```
+select * from fuzzy_suggest('Star Wars');
+ suggested_keyword | keyword_type | distance 
+-------------------+--------------+----------
+ Star Wars         | MOVIE        |        1
+ Sela Ward         | ACTOR        |        4
+ Stan Haze         | ACTOR        |        4
+```
+
+**fuzzy_suggest Code:**
 ```
 CREATE OR REPLACE FUNCTION fuzzy_suggest(search_keyword text)
 RETURNS TABLE (suggested_keyword text, keyword_type text, distance integer) AS $$
@@ -190,8 +319,22 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
+
 movie_by_actor( text ) Returns a list of movies acted in by an exact match actor:
 
+**movie_by_actor Example Output:**
+```
+book=# select * from movie_by_actor('Bruce Willis');
+      top_5_titles      
+------------------------
+ In Country
+ Mortal Thoughts
+ Billy Bathgate
+ Breakfast of Champions
+ The Story of Us
+```
+
+**movie_by_actor Code:**
 ```
 CREATE OR REPLACE FUNCTION movie_by_actor( search_actor text )
 RETURNS TABLE (top_5_titles_actor text) AS $$
@@ -211,6 +354,19 @@ $$ LANGUAGE plpgsql;
 
 movie_by_genre( text ) Returns a list of movies of a similar genre starting with an exact match movie using a 5x18 cube:
 
+**movie_by_genre Example Output:**
+```
+select * from movie_by_genre('Star Wars');
+                  top_5_titles                  
+------------------------------------------------
+ Star Wars: Episode V - The Empire Strikes Back
+ Avatar
+ Explorers
+ Krull
+ E.T. The Extra-Terrestrial
+```
+
+**movie_by_genre Code:**
 ```
 CREATE OR REPLACE FUNCTION movie_by_genre( search_title text )
 RETURNS TABLE (top_5_titles_genre text) AS $$
