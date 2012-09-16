@@ -11,7 +11,7 @@ git remote add upstream https://github.com/codingbynumbers/seven-databases.git
 git fetch upstream
 git merge upstream/master
 ```
-**Question** Will merging (just cause I fixed the upstream remote) risk my VM getting reverted and lose db changes to date?
+**Question:** Will merging (just cause I fixed the upstream remote) risk my VM getting reverted and lose db changes to date?
 
 I branched Day 3 although not sure if this is where it would merge given it says upstream/**master**.  Seemed to work:
 
