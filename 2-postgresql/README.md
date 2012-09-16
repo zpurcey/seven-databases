@@ -103,8 +103,8 @@ Looking forward to "... two-dimensional geographic searches in MongoDB"
 **or films with similar genres.**
 
 movie_genuius(text) is the main stored proc
-  Calls fuzzy_suggest() to retrieve close match movies and actors
-  Selects closest match and retrieves top 5 titles using movie_by_actor() or movie_by_genre()
+- Calls fuzzy_suggest() to retrieve close match movies and actors
+- Selects closest match and retrieves top 5 titles using movie_by_actor() or movie_by_genre()
 
 ```
 CREATE OR REPLACE FUNCTION movie_genuius(search_text text)
@@ -143,7 +143,7 @@ $$ LANGUAGE plpgsql;
 ```
 
 fuzzy_suggest(text) Uses simple levenshtein algorithm only to measure distance from actor and movie matches
-  Returns a list of unordered matches and their similarity distance to the provided search term
+- Returns a list of unordered matches and their similarity distance to the provided search term
 
 ```
 CREATE OR REPLACE FUNCTION fuzzy_suggest(search_keyword text)
