@@ -102,44 +102,97 @@ Looking forward to "... two-dimensional geographic searches in MongoDB"
 **and it will return the top five suggestions based on either movies the actor has starred in**
 **or films with similar genres.**
 
-DELETE FROM temp_table
-IF input text is closer to an actors name than a movie name THEN
-  INSERT INTO temp_table [values from top5 movies cube search of actors (STORED PROC)]
-ELSE
-  INSERT INTO temp_table [values from top5 movies cube search of movie genres (STORED PROC)]
+movie_genuius(text) is the main stored proc
+  Calls fuzzy_suggest() to retrieve close match movies and actors
+  Selects closest match and retrieves top 5 titles using movie_by_actor() or movie_by_genre()
 
-RETURN:
-SELECT * FROM temp_table
-
-  drop table top5_movies;
-  
-
-CREATE OR REPLACE FUNCTION movie_genuius( search_text text, fuzzy_int integer )
+```
+CREATE OR REPLACE FUNCTION movie_genuius(search_text text)
 RETURNS TABLE (top_5_titles text) AS $$
 
+DECLARE
+key text;
+type text;
+
 BEGIN
-  IF (SELECT COUNT (*) FROM actors WHERE levenshtein(lower(name), lower(search_text)) <= fuzzy_int) > 0 THEN
-  RAISE NOTICE 'Best match as actor - generating results:';
-  RETURN QUERY (
+  key = '';
+  type = '';
   
-      SELECT *
-        FROM movie_by_actor( search_text )
-    );
-  ELSIF (SELECT COUNT (*) FROM movies WHERE levenshtein(lower(title), lower(search_text)) <= fuzzy_int) > 0 THEN
-  RAISE NOTICE 'Best match as Movie Title - generating results:';
+  select suggested_keyword, keyword_type into key, type from fuzzy_suggest(search_text) order by distance limit 1;
+  IF type = 'ACTOR' THEN
+    RAISE NOTICE 'Returning other movies % acts in',key;
     RETURN QUERY (
       SELECT *
-        FROM movie_by_genre( search_text )
+      FROM movie_by_actor( key)
     );
+    
+  ELSIF type = 'MOVIE' THEN
+    RAISE NOTICE 'Returning similar movies by Genre for %',key;
+    RETURN QUERY (
+      SELECT *
+        FROM movie_by_genre( key )
+    );
+
   ELSE
-    RAISE NOTICE 'No Fuzzy Match - try increasing fuzzy_int (accuracy) argument';
+    RAISE NOTICE 'No Fuzzy Match - Check your spelling or try Google :) my db is too small';
   END IF;
+  RETURN;
 END;
 
 $$ LANGUAGE plpgsql;
+```
 
+fuzzy_suggest(text) Uses simple levenshtein algorithm only to measure distance from actor and movie matches
+  Returns a list of unordered matches and their similarity distance to the provided search term
 
+```
+CREATE OR REPLACE FUNCTION fuzzy_suggest(search_keyword text)
+RETURNS TABLE (suggested_keyword text, keyword_type text, distance integer) AS $$
 
+DECLARE
+  fuzzy_int integer;
+  matched_type text;
+
+BEGIN
+  fuzzy_int = 1;
+  matched_type = 'MOVIE';
+
+  FOR fuzzy_int IN 1..10 LOOP
+    IF (SELECT count (*) FROM movies WHERE levenshtein(lower(title), lower(search_keyword)) <= fuzzy_int) > 0 THEN
+      -- RAISE NOTICE 'Movie matched at a distance of %',fuzzy_int;
+      
+      RETURN QUERY (
+        SELECT title, matched_type, fuzzy_int FROM movies WHERE levenshtein(lower(title), lower(search_keyword)) <= fuzzy_int
+      );
+      
+      EXIT;
+    
+    END IF;
+  END LOOP;
+
+  matched_type = 'ACTOR';
+  -- fuzzy_int = 1;
+  FOR fuzzy_int IN 1..10 LOOP
+    IF (SELECT count (*) FROM actors WHERE levenshtein(lower(name), lower(search_keyword)) <= fuzzy_int) > 0 THEN
+      -- RAISE NOTICE 'Actor matched at a distance of %',fuzzy_int;
+      
+      RETURN QUERY (
+        SELECT name, matched_type, fuzzy_int FROM actors WHERE levenshtein(lower(name), lower(search_keyword)) <= fuzzy_int
+      );
+      
+      EXIT;
+ 
+    END IF;
+  END LOOP;
+
+END;
+
+$$ LANGUAGE plpgsql;
+```
+
+movie_by_actor( text ) Returns a list of movies acted in by an exact match actor:
+
+```
 CREATE OR REPLACE FUNCTION movie_by_actor( search_actor text )
 RETURNS TABLE (top_5_titles_actor text) AS $$
 
@@ -147,13 +200,18 @@ BEGIN
   RETURN QUERY (
   
     SELECT title
-      FROM movies NATURAL JOIN movies_actors NATURAL JOIN actors WHERE metaphone(name, 6) = metaphone(search_actor, 6)
+      FROM movies NATURAL JOIN movies_actors NATURAL JOIN actors WHERE name = search_actor;
       LIMIT 5
   );
 END;
 
 $$ LANGUAGE plpgsql;
+```
 
+
+movie_by_genre( text ) Returns a list of movies of a similar genre starting with an exact match movie using a 5x18 cube:
+
+```
 CREATE OR REPLACE FUNCTION movie_by_genre( search_title text )
 RETURNS TABLE (top_5_titles_genre text) AS $$
 
@@ -166,30 +224,6 @@ BEGIN
   );
 END;
 
-$$ LANGUAGE plpgsql;
-
-```
-CREATE OR REPLACE FUNCTION movie_genuius( in_title text, in_actor text )
-RETURNS boolean AS $$
-DECLARE
-  did_insert boolean := false;
-  found_count integer;
-  the_venue_id integer;
-BEGIN
-  SELECT venue_id INTO the_venue_id
-  FROM venues v
-  WHERE v.postal_code=postal AND v.country_code=country AND v.name ILIKE venue LIMIT 1;
-  IF the_venue_id IS NULL THEN
-    INSERT INTO venues (name, postal_code, country_code) VALUES (venue, postal, country)
-    RETURNING venue_id INTO the_venue_id;
-    did_insert := true;
-  END IF;
-  RAISE NOTICE 'Venue found %', the_venue_id;
-  INSERT INTO events (title, starts, ends, venue_id)
-  VALUES (title, starts, ends, the_venue_id);
-  
-  RETURN did_insert;
-END;
 $$ LANGUAGE plpgsql;
 ```
 
