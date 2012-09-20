@@ -234,3 +234,104 @@ curl -X PUT http://localhost:8091/riak/medicines/antibiotics \
 Checked it:
 `http http://localhost:8091/riak/medicines?keys=true`
 
+
+### Day 2
+Riak provides more of these in a file named mapred_builtins.js:
+https://github.com/basho/riak_kv/blob/master/priv/mapred_builtins.js
+
+This is known as a cascading failure, and its rare but possible. Consider this a fair warning not to tax every Riak server at full capacity, since you never know when one will have to pick up the slack.
+
+
+### Day 2 Questions
+** Find **
+1. Read the online Riak mapreduce documentation.
+`http://wiki.basho.com/MapReduce.html`
+
+2. Find the Riak contrib functions repository, with lots of prebuilt mapreduce functions.
+`http://contrib.basho.com/map-reduce-functions.html`
+
+3. Find the online documentation for a complete list of key filters, which range from converting strings to_upper to finding numerical values between some range to even some simple Levenshtein distance string matches and logical and/or/not operations.
+`http://wiki.basho.com/Key-Filters.html`
+
+** Do **
+1. Write map and reduce functions against the rooms bucket to find the total guest capacity per floor.
+
+Guest capacity per floor
+
+Map
+```
+curl -X PUT -H "content-type:application/json" http://localhost:8091/riak/my_functions/map_floor_cap --data @-
+
+function(v) {
+  var parsed_data = JSON.parse(v.values[0].data); 
+  var data = {};
+	data[v.key.slice(0,-2)] = parsed_data.capacity;
+	return [data];
+}
+```
+Reduce
+```
+curl -X POST -H "content-type:application/json" http://localhost:8091/mapred --data @-
+{
+  "inputs":{
+      "bucket":"rooms",
+      "key_filters": [["string_to_int"], ["between", 4200, 4400]]
+  },
+  "query":[
+    {"map":{
+      "language":"javascript",
+      "bucket":"my_functions",
+      "key":"map_floor_cap"
+    }},
+    {"reduce":{
+      "language":"javascript",
+      "source":
+        "function(v) {
+          var totals = {};
+          for (var i in v) {
+            for(var floor in v[i]) {
+              if( totals[floor] ) totals[floor] += v[i][floor];
+              else                totals[floor] = v[i][floor];
+            }
+          }
+          return [totals];
+        }"
+    }}
+  ]
+}
+```
+
+2. Extend the previous function with a filter to find the capacities only for rooms on floors 42 and 43.
+
+Reduce
+```
+curl -X POST -H "content-type:application/json" http://localhost:8091/mapred --data @-
+{
+  "inputs":{
+      "bucket":"rooms",
+      "key_filters": [["string_to_int"], ["between", 4200, 4400]]
+  },
+  "query":[
+    {"map":{
+      "language":"javascript",
+      "bucket":"my_functions",
+      "key":"map_floor_cap"
+    }},
+    {"reduce":{
+      "language":"javascript",
+      "source":
+        "function(v) {
+          var totals = {};
+          for (var i in v) {
+            for(var floor in v[i]) {
+              if( totals[floor] ) totals[floor] += v[i][floor];
+              else                totals[floor] = v[i][floor];
+            }
+          }
+          return [totals];
+        }"
+    }}
+  ]
+}
+```
+ 
