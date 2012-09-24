@@ -334,4 +334,24 @@ curl -X POST -H "content-type:application/json" http://localhost:8091/mapred --d
   ]
 }
 ```
- 
+
+
+### Day 3 Notes
+
+
+Anyone have issues with the index search example on day 3?
+
+```
+curl http://localhost:8091/solr/animals/select?q=breed:Shepherd
+```
+
+> Is not returning me any hits.
+
+> I didn't have much  luck with solr searching either.
+
+I just figured it out - I had one Shepherd - ace.  When I looked at the record I had two siblings so I updated the record using the vector clock to resolve the conflict and my Shepherd search worked.
+
+* I guess when there is a conflict the search returns nothing for the record. *
+
+Still not sure why it doesn't return RTT.
+
