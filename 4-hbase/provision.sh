@@ -11,6 +11,9 @@ then
   tar xfz /vagrant/hbase-0.94.1.tar.gz
   chown -hR vagrant.vagrant hbase-0.94.1
 
+  echo "export HBASE_HOME=/home/vagrant/hbase-0.94.1" >> /home/vagrant/.profile
+  cp /vagrant/hbase-site.xml /home/vagrant/hbase-0.94.1/conf 
+
   echo "Done!"
 else
   echo "HBase appears to be setup already!"
