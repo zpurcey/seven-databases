@@ -13,6 +13,7 @@ then
 
   echo "export HBASE_HOME=/home/vagrant/hbase-0.94.1" >> /home/vagrant/.profile
   cp /vagrant/hbase-site.xml /home/vagrant/hbase-0.94.1/conf 
+  sed -e '2 s/127.0.1.1/127.0.0.1/' -i /etc/hosts
 
   echo "Done!"
 else
