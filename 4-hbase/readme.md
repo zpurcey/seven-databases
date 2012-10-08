@@ -129,3 +129,12 @@ Check my answer:
 get 'wiki', 'Some title'
 ```
 
+Installing thrift:
+sudo apt-get install libboost-dev libboost-test-dev libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev
+
+Forced me to create ../data directory after upstream merge
+There was a problem with the configuration of Vagrant. The error message(s)
+are printed below:
+
+vm:
+* Shared folder host path for 'v-data' doesn't exist: ../data
