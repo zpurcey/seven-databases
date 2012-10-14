@@ -158,6 +158,7 @@ Although the books shows the find matches a record we only created data for numb
 
 
 > If you prefer that the mapreducer just output the results, rather than out- putting to a collection, you can set the out value to { inline : 1 }, but bear in mind there is a limit to the size of a result you can output. As of Mongo 2.0, that limit is 16MB.
+
 Is the limit just on output to screen? Assume so.
 
 
@@ -165,13 +166,16 @@ Is the limit just on output to screen? Assume so.
 
 ### Find
 1. A shortcut for admin commands.
+
 http://docs.mongodb.org/manual/reference/commands/
 
 2. The online documentation for queries and cursors.
+
 http://www.mongodb.org/display/DOCS/Queries+and+Cursors
 
 
 3. The MongoDB documentation for mapreduce.
+
 http://www.mongodb.org/display/DOCS/MapReduce
 
 
@@ -245,9 +249,8 @@ function () {
 
 ### Do
 1. Implement a finalize method to output the count as the total.
-```
-function finalize(key, value) -> final_value
 
+```
 finalize = function(key, values) {
   return { total: value.count };
 }
@@ -264,13 +267,16 @@ results = db.runCommand({
 2. Install a Mongo driver for a language of your choice, and connect to the database. Populate a collection through it, and index one of the fields.
 
 Python Mongo Engine:
+
 ```
 sudo apt-get install build-essential python-dev
 sudo apt-get install python-pip
 pip install pymongo
 pip install mongoengine
 ```
+
 Based on tutorial here:
+
 ```
 http://mongoengine-odm.readthedocs.org/en/latest/tutorial.html
 ```
@@ -281,7 +287,9 @@ Added Index to tags on Post collection below using:
 ...
 	meta = { 'indexes': [ 'tags' ] }
 ```
+
 Confirmed it was created:
+
 ```
 > db.system.indexes.find()
 { "v" : 1, "key" : { "_id" : 1 }, "ns" : "mongoengine.user", "name" : "_id_" }
@@ -292,6 +300,7 @@ Confirmed it was created:
 ```
 
 create_collection.py
+
 ```
 from mongoengine import *
 
