@@ -1,0 +1,209 @@
+
+```
+$ mongo book
+
+db.towns.insert({
+name: "New York",
+population: 22200000,
+last_census: ISODate("2009-07-31"), famous_for: [ "statue of liberty", "food" ], mayor : {
+name : "Michael Bloomberg",
+party : "I" }
+})
+```
+
+```
+function insertCity(
+name, population, last_census, famous_for, mayor_info
+){ db.towns.insert({
+    name:name,
+    population:population,
+    last_census: ISODate(last_census),
+    famous_for:famous_for,
+    mayor : mayor_info
+}); }
+```
+
+```
+insertCity("Punxsutawney", 6200, '2008-31-01', ["phil the groundhog"], { name : "Jim Wehrle" }
+)
+insertCity("Portland", 582000, '2007-20-09',
+["beer", "food"], { name : "Sam Adams", party : "D" }
+)
+```
+
+```
+db.countries.insert({
+	_id : "us",
+	name : "United States",
+	exports : {
+		foods : [
+			{ name : "bacon", tasty : true },
+			{ name : "burgers" }
+		]
+	}
+})
+
+db.countries.insert({
+	_id : "ca",
+	name : "Canada",
+	exports : {
+		foods : [
+			{ name : "bacon", tasty : false },
+			{ name : "syrup", tasty : true }
+		]
+	}
+})
+
+db.countries.insert({
+	_id : "mx",
+	name : "Mexico",
+	exports : {
+		foods : [{
+			name : "salsa",
+			tasty : true,
+			condiment : true
+		}]
+	}
+})
+```
+
+Remember to use your own object id:
+```
+db.towns.update(
+{ _id : ObjectId("50740a496cddc761cf3db4b1") }, { $set : { "state" : "OR" } }
+);
+```
+
+```
+db.towns.update(
+{ _id : ObjectId("50740a496cddc761cf3db4b1") }, { $inc : { population : 1000} }
+)
+```
+
+```
+db.towns.update(
+{ _id : ObjectId("507292bc9d89c19f4c1b1d42") },
+{ $set : { country: { $ref: "countries", $id: "us" } } }
+)
+```
+
+```
+var portland = db.towns.findOne({ _id : ObjectId("507292bc9d89c19f4c1b1d42") })
+```
+```
+var bad_bacon = {
+	'exports.foods' : {
+		$elemMatch : { name : 'bacon', tasty : false }
+	}
+}
+db.countries.find( bad_bacon )
+db.countries.remove( bad_bacon )
+db.countries.count()
+```
+Should return 2.
+
+
+mongo/populate_phones.js
+```
+populatePhones = function(area,start,stop) {
+  for(var i=start; i < stop; i++) {
+    var country = 1 + ((Math.random() * 8) << 0);
+    var num = (country * 1e10) + (area * 1e7) + i;
+    db.phones.insert({
+      _id: num,
+      components: {
+        country: country,
+        area: area,
+        prefix: (i * 1e-4) << 0,
+        number: i
+      },
+      display: "+" + country + " " + area + "-" + i
+    });
+  }
+}
+```
+
+```
+db.setProfilingLevel(2)
+```
+```
+populatePhones( 855, 5550000, 5650000 )
+```
+
+```
+db.system.js.save({ _id:'getLast',
+value:function(collection){
+return collection.find({}).sort({'_id':1}).limit(1)[0]
+} })
+```
+
+```
+distinctDigits = function(phone){ var
+number = phone.components.number + '', seen = [],
+result = [],
+i = number.length;
+while(i--) { seen[+number[i]] = 1;
+}
+for (i=0; i<10; i++) {
+if (seen[i]) { result[result.length] = i;
+} }
+return result; }
+db.system.js.save({_id: 'distinctDigits', value: distinctDigits})
+```
+```
+map = function() {
+var digits = distinctDigits(this);
+emit({digits : digits, country : this.components.country}, {count : 1});
+}
+```
+```
+reduce = function(key, values) {
+var total = 0;
+for(var i=0; i<values.length; i++) {
+    total += values[i].count;
+  }
+return { count : total }; }
+results = db.runCommand({ mapReduce: 'phones', map: map,
+reduce: reduce,
+out: 'phones.report' })
+```
+
+
+Currently storing the data in:
+dbpath=/var/lib/mongodb
+
+Setting up new dirs in ~:
+```
+mkdir ./mongo1 ./mongo2 ./mongo3
+```
+
+```
+mongod --replSet book --dbpath ./mongo1 --port 27011 --rest
+mongod --replSet book --dbpath ./mongo2 --port 27012 --rest
+mongod --replSet book --dbpath ./mongo3 --port 27013 --rest
+```
+
+```
+rs.initiate({
+_id: 'book', members: [
+{_id: 1, host: 'localhost:27011'}, {_id: 2, host: 'localhost:27012'}, {_id: 3, host: 'localhost:27013'}
+] })
+```
+```
+rs.status()
+```
+
+```
+db.echo.insert({ say : 'HELLO!' })
+db.isMaster()
+db.echo.insert({ say : 'is this thing on?' })
+```
+
+
+```
+db.cities.ensureIndex({ location : "2d" })
+```
+
+```
+db.runCommand({geoNear : 'cities', near : [45.52, -122.67], num : 5, maxDistance : 1})
+```
