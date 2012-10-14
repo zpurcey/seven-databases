@@ -8,6 +8,58 @@ When the VM is ready you can type `vagrant ssh` to connect to it.
 
 **Note:** There is a bug in Vagrant v1.0.4 and earlier which sometimes prevents the provisioning process from completing cleanly. If you can see `Done!` in the output then you can press Ctrl+C twice to exit the process, then type `vagrant ssh`.
 
+## Chapter Summary
+
+Mongo is a JSON/BSON document database that allows nested documents for collecting like information instead of table joins.  A set of documents is called a collection in Mongo.  Mongo is incredibly flexible handling complex denormalised documents with just as flexible storage strategy.  Great for storing data with unknown or changing qualities.
+
+It feels friendly to users familiar with relational databases and is very popular because of this.
+
+It's flexibility can be dangerous - add old value of any type into any collection, typos etc.  Do you need the flexibility? You may already have a data model locked down.
+
+**Who uses it?**
+Foursquare, bit.ly, CERN, Disney has a 1400 node cluster too:
+Disney (Richard Glew) - 1 Year with Mongo at Disney:
+
+http://www.10gen.com/presentations/mongosv-2011/a-year-with-mongodb-running-operations-to-keep-the-game-magic-alive
+
+**Installation**
+
+Can it be simplier?  It seems so well designed to be plug and play.  Deploying and configuring was a pleasure especially compared to HBASE.
+
+**ObjectIDs**
+Each document includes a serial number (ObjectID) that is made up of timestamp, client machine ID, client process ID and a counter.  This allows for distributed id generation without conflicts.
+
+**JavaScript**
+JavaScript is the platform language.  Fantastic help() functions provide hints on all available functions for a given object.  All commands are just Javascript functions.  Leaving off the trailing () will return the actual JavaScript Code for the command.  Fantastic ability to see both high level commands and low level (driver) sys commands.
+
+You can also incorporate JavaScript functions directly from the shell or using JavaScript file.
+
+**References**
+Use $ref to reference another non-nested document.  Closest thing to a join.
+
+**Noob Warning**
+Mongo is very friendly in that it will let you create a new DB or document even if you mis-spelt the name of an existing object.  Imagine hours of debugging the code logic only to realise a small typo has been sending it to another doc or db.
+
+Day 2 Summary
+Indexes
+Aggregated Queries - count(), distinct(), group()
+Server side commands with Eval
+MapReduce + a side order of Finalize
+
+Day 3 Summary
+**Replica**
+You should rarely run a single Mongo instance in production but rather replicate the stored data across multiple services.
+
+**Sharding**
+Horizontal distribution by value ranges.
+
+**GeoSpatial Queries**
+
+**GridFS**
+Is cool - a way to easily make adhoc files available and replicated across a Mongo cluster.
+
+Simple: mongofiles -h localhost:27020 put my_file.txt
+
 
 ## Day 1 Study Notes
 > Since Mongo is schema- less, there is no need to define anything up front; merely using it is enough.
@@ -400,22 +452,25 @@ This comes down to the Mongo philosophy of server setups and the reason we shoul
 
 
 Why odd number of nodes?
-MongoDB expects an odd number of total nodes in the replica set. Consider a five-node network, for example. If connection issues split it into a three- node fragment and a two-node fragment, the larger fragment has a clear majority and can elect a master and continue servicing requests. With no clear majority, a quorum couldnt be reached.
+> MongoDB expects an odd number of total nodes in the replica set. Consider a five-node network, for example. If connection issues split it into a three- node fragment and a two-node fragment, the larger fragment has a clear majority and can elect a master and continue servicing requests. With no clear majority, a quorum couldnt be reached.
 
-Some databases (e.g., CouchDB) are built to allow multiple masters, but Mongo is not, and so it isnt prepared to resolve data updates between them. MongoDB deals with conflicts between multiple masters by simply not allowing them.
+> Some databases (e.g., CouchDB) are built to allow multiple masters, but Mongo is not, and so it isnt prepared to resolve data updates between them. MongoDB deals with conflicts between multiple masters by simply not allowing them.
 
-Unlike with Riak, where availability and partitioning are functions of the properties set on buckets, MongoDB requires the whole topology to be explicitly configured.
+> Unlike with Riak, where availability and partitioning are functions of the properties set on buckets, MongoDB requires the whole topology to be explicitly configured.
 
 
 ## Day 3 Exercises
 
 ### Find
 1. Read the full replica set configuration options in the online docs.
+
 http://docs.mongodb.org/manual/reference/replica-configuration/
 
 
 2. Find out how to create a spherical geo index.
+
 http://www.mongodb.org/display/DOCS/Geospatial+Indexing#GeospatialIndexing-TheEarthisRoundbutMapsareFlat
+
 ```
 db.places.ensureIndex( { loc : "2d" } , { min : -500 , max : 500 } )
 ```
@@ -438,5 +493,3 @@ var result = db.runCommand(
 
 
 2. Run six servers: three servers in a replica set, and each replica set is one of two shards. Run a config server and mongos. Run GridFS across them (this is the final exam).
-
-...
